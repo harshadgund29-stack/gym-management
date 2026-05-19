@@ -1,0 +1,53 @@
+# =============================================================================
+# application-local.properties.template
+# Copy to application-local.properties and fill in real values.
+# DO NOT commit application-local.properties — it is in .gitignore.
+# Set values via environment variables (see README for PowerShell/bash examples).
+# =============================================================================
+
+# ── Database ──────────────────────────────────────────────────────────────────
+spring.datasource.url=${SPRING_DATASOURCE_URL}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+# ── JWT ───────────────────────────────────────────────────────────────────────
+jwt.secret=${JWT_SECRET}
+jwt.expiration=86400000
+
+# ── Email (Gmail SMTP) ────────────────────────────────────────────────────────
+# spring.mail.username MUST equal the From address used in EmailServiceImpl
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${SPRING_MAIL_USERNAME}
+spring.mail.password=${SPRING_MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.properties.mail.smtp.ssl.protocols=TLSv1.2
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000
+# Enable SMTP debug only in dev — remove in production
+# spring.mail.properties.mail.debug=true  # enable only in dev profile
+
+spring.mail.from=${SPRING_MAIL_USERNAME}
+
+# ── Cashfree ──────────────────────────────────────────────────────────────────
+cashfree.appId=${CASHFREE_APP_ID}
+cashfree.secretKey=${CASHFREE_SECRET_KEY}
+cashfree.environment=SANDBOX
+cashfree.apiBaseUrl=https://sandbox.cashfree.com
+cashfree.returnUrl=http://localhost:5173/checkout/result
+cashfree.notificationUrl=http://localhost:8080/cashfree/callback
+
+# ── PayPal ────────────────────────────────────────────────────────────────────
+# Set in frontend/.env as VITE_PAYPAL_CLIENT_ID — never expose secret in client
+# paypal.sandbox.client-id=${PAYPAL_SANDBOX_CLIENT_ID}
+
+# ── App ───────────────────────────────────────────────────────────────────────
+app.frontend.url=http://localhost:5173
+server.port=8080
+spring.profiles.active=dev
