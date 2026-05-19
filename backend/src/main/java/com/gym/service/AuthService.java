@@ -3,12 +3,18 @@ package com.gym.service;
 import com.gym.dto.AuthResponse;
 import com.gym.dto.LoginRequest;
 import com.gym.dto.RegisterRequest;
+import com.gym.entity.PasswordResetToken;
 import com.gym.entity.Role;
 import com.gym.entity.User;
 import com.gym.exception.BadRequestException;
+import com.gym.repository.PasswordResetTokenRepository;
 import com.gym.repository.UserRepository;
 import com.gym.security.JwtUtils;
+import com.gym.service.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,126 +22,151 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * AuthService — handles user registration and login.
- *
- * Admin login rules:
- *  - Only admin@gmail.com can log in as ADMIN.
- *  - No one can self-register as ADMIN.
- *  - Members and Trainers can register and log in normally.
- */
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Service
 public class AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private static final String ADMIN_EMAIL = "admin@gmail.com";
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private PasswordResetTokenRepository resetTokenRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private AuthenticationManager authenticationManager;
+    @Autowired private JwtUtils jwtUtils;
+    @Autowired private EmailService emailService;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    // ── Register ─────────────────────────────────────────────
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    /**
-     * Register a new user.
-     * Rules:
-     *  - ADMIN role cannot be self-registered.
-     *  - Email must not already be taken.
-     *  - Password is BCrypt-hashed before storage.
-     */
     public AuthResponse register(RegisterRequest request) {
-        // Block self-registration as ADMIN
-        if (request.getRole() == Role.ADMIN) {
+        if (request.getRole() == Role.ADMIN)
             throw new BadRequestException("Admin accounts cannot be self-registered.");
-        }
 
-        // Normalize email
         String email = request.getEmail().trim().toLowerCase();
         request.setEmail(email);
 
-        // Block using the admin email for non-admin registration
-        if (ADMIN_EMAIL.equalsIgnoreCase(email)) {
+        if (ADMIN_EMAIL.equalsIgnoreCase(email))
             throw new BadRequestException("This email address is reserved.");
-        }
 
-        // Check for duplicate email
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(email))
             throw new BadRequestException("Email is already registered: " + email);
-        }
 
-        // Build the User entity
         User user = new User();
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(request.getRole() != null ? request.getRole() : Role.MEMBER);
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
-
         userRepository.save(user);
 
-        // Authenticate immediately so we can generate a token
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, request.getPassword())
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = jwtUtils.generateToken(authentication);
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(auth);
 
-        return buildAuthResponse(token, user);
+        logger.info("New user registered: {}", email);
+        return buildAuthResponse(jwtUtils.generateToken(auth), user);
     }
 
-    /**
-     * Login an existing user.
-     *
-     * Admin login rule: only admin@gmail.com is allowed to log in as ADMIN.
-     * If any other account somehow has ADMIN role, login is blocked.
-     */
+    // ── Login ────────────────────────────────────────────────
+
     public AuthResponse login(LoginRequest request) {
-        // Normalize email
         String email = request.getEmail().trim().toLowerCase();
 
-        // Authenticate via Spring Security (BCrypt password check)
-        Authentication authentication;
+        Authentication auth;
         try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.getPassword().trim())
-            );
+            auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword().trim()));
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(auth);
 
-        // Load the user to check role
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
-        // Enforce: only admin@gmail.com can be ADMIN
-        if (user.getRole() == Role.ADMIN && !ADMIN_EMAIL.equalsIgnoreCase(email)) {
+        if (user.getRole() == Role.ADMIN && !ADMIN_EMAIL.equalsIgnoreCase(email))
             throw new BadCredentialsException("Invalid email or password");
-        }
 
-        String token = jwtUtils.generateToken(authentication);
-        return buildAuthResponse(token, user);
+        logger.info("User logged in: {}", email);
+        return buildAuthResponse(jwtUtils.generateToken(auth), user);
     }
 
-    /** Helper to build the AuthResponse DTO */
+    // ── Forgot Password ──────────────────────────────────────
+
+    /**
+     * Sends a password-reset email.
+     * Always returns success (don't reveal if email exists).
+     */
+    @Transactional
+    public void forgotPassword(String email) {
+        String normalised = email.trim().toLowerCase();
+
+        userRepository.findByEmail(normalised).ifPresent(user -> {
+            // Delete any existing tokens for this user
+            resetTokenRepository.deleteByUserId(user.getId());
+
+            // OTP-based forgot password
+            // Generate a 6-digit OTP valid for 5 minutes
+            int otp = (int) (Math.random() * 900000) + 100000;
+            user.setOtp(otp);
+            // re-use generatedTime as "otp generated time"
+            user.setGeneratedTime(java.math.BigInteger.valueOf(System.currentTimeMillis()));
+            userRepository.save(user);
+
+            // Send OTP email
+            emailService.sendOTP(user.getEmail(), otp);
+
+            logger.info("Password reset OTP sent to: {} otp={}", normalised, otp);
+        });
+    }
+
+    // ── Reset Password ───────────────────────────────────────
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        if (token == null || token.isBlank())
+            throw new BadRequestException("Reset token is required.");
+        if (newPassword == null || newPassword.length() < 6)
+            throw new BadRequestException("Password must be at least 6 characters.");
+
+        PasswordResetToken resetToken = resetTokenRepository
+                .findByTokenAndUsedFalse(token)
+                .orElseThrow(() -> new BadRequestException("Invalid or expired reset token."));
+
+        if (LocalDateTime.now().isAfter(resetToken.getExpiresAt()))
+            throw new BadRequestException("Reset token has expired. Please request a new one.");
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        resetTokenRepository.save(resetToken);
+
+        logger.info("Password reset successful for: {}", user.getEmail());
+    }
+
+    // ── Helper ───────────────────────────────────────────────
+
     private AuthResponse buildAuthResponse(String token, User user) {
-        AuthResponse response = new AuthResponse();
-        response.setToken(token);
-        response.setTokenType("Bearer");
-        response.setUserId(user.getId());
-        response.setFirstName(user.getFirstName());
-        response.setLastName(user.getLastName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole());
-        return response;
+        AuthResponse r = new AuthResponse();
+        r.setToken(token);
+        r.setTokenType("Bearer");
+        r.setUserId(user.getId());
+        r.setFirstName(user.getFirstName());
+        r.setLastName(user.getLastName());
+        r.setEmail(user.getEmail());
+        r.setRole(user.getRole());
+        return r;
     }
 }

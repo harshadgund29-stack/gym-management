@@ -53,6 +53,20 @@ public class JwtUtils {
                 .compact();
     }
 
+    /**
+     * Overload: generate a JWT token directly from email + role string.
+     * Used by UserServiceImpl.loginUser() which works with the Users entity.
+     */
+    public String generateToken(String email, String role) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     /** Extract the email (subject) from a JWT token */
     public String getEmailFromToken(String token) {
         return Jwts.parserBuilder()

@@ -11,55 +11,56 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * DataInitializer — runs once on application startup.
+ * DataInitializer — seeds default accounts on every startup.
  *
- * Ensures the admin account always exists with the correct credentials:
- *   Email:    admin@gmail.com
- *   Password: 123456
+ * Accounts created (if they don't already exist):
+ * ┌─────────────────────────────┬──────────────┬─────────┐
+ * │ Email                       │ Password     │ Role    │
+ * ├─────────────────────────────┼──────────────┼─────────┤
+ * │ admin@gmail.com             │ 123456       │ ADMIN   │
+ * │ trainer@fitpro.com          │ trainer123   │ TRAINER │
+ * │ member@fitpro.com           │ member123    │ MEMBER  │
+ * └─────────────────────────────┴──────────────┴─────────┘
  *
- * If the admin already exists, it updates the password to ensure it matches.
- * This guarantees admin login always works regardless of database state.
+ * Passwords are always re-hashed on startup to ensure they match
+ * even if the DB was seeded with a different BCrypt round count.
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
-    private static final String ADMIN_EMAIL    = "admin@gmail.com";
-    private static final String ADMIN_PASSWORD = "123456";
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired private UserRepository userRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
-        initAdmin();
+        seedUser("admin@gmail.com",    "Admin",   "User",    "123456",     Role.ADMIN,   "555-0001", "1 Admin Street");
+        seedUser("trainer@fitpro.com", "John",    "Trainer", "trainer123", Role.TRAINER, "555-0002", "2 Trainer Ave");
+        seedUser("member@fitpro.com",  "Jane",    "Member",  "member123",  Role.MEMBER,  "555-0003", "3 Member Road");
     }
 
-    private void initAdmin() {
-        userRepository.findByEmail(ADMIN_EMAIL).ifPresentOrElse(
-            existingAdmin -> {
-                // Admin exists — ensure password is correct (re-hash and update)
-                existingAdmin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
-                existingAdmin.setRole(Role.ADMIN);
-                userRepository.save(existingAdmin);
-                logger.info("Admin account verified: {}", ADMIN_EMAIL);
+    private void seedUser(String email, String firstName, String lastName,
+                          String rawPassword, Role role, String phone, String address) {
+        userRepository.findByEmail(email).ifPresentOrElse(
+            existing -> {
+                // Always re-hash to ensure password is correct
+                existing.setPassword(passwordEncoder.encode(rawPassword));
+                existing.setRole(role);
+                userRepository.save(existing);
+                log.info("✓ {} account verified: {}", role, email);
             },
             () -> {
-                // Admin does not exist — create it
-                User admin = new User();
-                admin.setFirstName("Admin");
-                admin.setLastName("User");
-                admin.setEmail(ADMIN_EMAIL);
-                admin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
-                admin.setRole(Role.ADMIN);
-                admin.setPhone("555-0001");
-                admin.setAddress("1 Admin Street");
-                userRepository.save(admin);
-                logger.info("Admin account created: {}", ADMIN_EMAIL);
+                User user = new User();
+                user.setFirstName(firstName);
+                user.setLastName(lastName);
+                user.setEmail(email);
+                user.setPassword(passwordEncoder.encode(rawPassword));
+                user.setRole(role);
+                user.setPhone(phone);
+                user.setAddress(address);
+                userRepository.save(user);
+                log.info("✓ {} account created: {}", role, email);
             }
         );
     }

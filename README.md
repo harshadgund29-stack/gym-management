@@ -110,16 +110,15 @@ The React app will open at **http://localhost:3000**
 
 ## 🔑 Demo Login Credentials
 
-All passwords are: **password123**
+All accounts are seeded automatically by `DataInitializer` on every backend startup.
 
-| Role    | Email              |
-|---------|--------------------|
-| Admin   | admin@gym.com      |
-| Trainer | john@gym.com       |
-| Trainer | sarah@gym.com      |
-| Member  | alice@gym.com      |
-| Member  | bob@gym.com        |
-| Member  | charlie@gym.com    |
+| Role    | Email                  | Password     |
+|---------|------------------------|--------------|
+| Admin   | admin@gmail.com        | 123456       |
+| Trainer | trainer@fitpro.com     | trainer123   |
+| Member  | member@fitpro.com      | member123    |
+
+> Passwords are re-hashed with BCrypt on every startup, so they always match.
 
 ---
 
@@ -293,3 +292,204 @@ Content-Type: application/json
 
 **"Table doesn't exist" errors**
 → Set `spring.jpa.hibernate.ddl-auto=create` on first run, then change back to `update`.
+
+---
+
+## 🔧 Environment Variables & Local Setup (Updated)
+
+### Demo Credentials (seeded on every startup by DataInitializer)
+
+| Role    | Email                  | Password     |
+|---------|------------------------|--------------|
+| Admin   | admin@gmail.com        | 123456       |
+| Trainer | trainer@fitpro.com     | trainer123   |
+| Member  | member@fitpro.com      | member123    |
+
+---
+
+### Setting Secrets Locally (never commit these)
+
+**PowerShell:**
+```powershell
+$env:DB_USERNAME            = "root"
+$env:DB_PASSWORD            = "your_mysql_password"
+$env:JWT_SECRET             = "your_base64_jwt_secret_at_least_256_bits"
+$env:SPRING_MAIL_USERNAME   = "harshadgund29@gmail.com"
+$env:SPRING_MAIL_PASSWORD   = "your_16_char_google_app_password"
+$env:CASHFREE_APP_ID        = "your_cashfree_sandbox_app_id"
+$env:CASHFREE_SECRET_KEY    = "your_cashfree_sandbox_secret"
+$env:PAYPAL_SANDBOX_CLIENT_ID = "your_paypal_sandbox_client_id"
+```
+
+**Bash:**
+```bash
+export DB_USERNAME="root"
+export DB_PASSWORD="your_mysql_password"
+export JWT_SECRET="your_base64_jwt_secret_at_least_256_bits"
+export SPRING_MAIL_USERNAME="harshadgund29@gmail.com"
+export SPRING_MAIL_PASSWORD="your_16_char_google_app_password"
+export CASHFREE_APP_ID="your_cashfree_sandbox_app_id"
+export CASHFREE_SECRET_KEY="your_cashfree_sandbox_secret"
+export PAYPAL_SANDBOX_CLIENT_ID="your_paypal_sandbox_client_id"
+```
+
+> Gmail App Password: generate at https://myaccount.google.com/apppasswords (requires 2FA enabled)
+
+---
+
+### Build & Run (exact commands)
+
+**Backend:**
+```powershell
+# PowerShell
+cd "gym management system\backend"
+& ".\apache-maven-3.9.8\bin\mvn.cmd" clean package -DskipTests=false 2>&1 | Tee-Object build-output.txt
+& ".\apache-maven-3.9.8\bin\mvn.cmd" spring-boot:run
+```
+
+```bash
+# Bash
+cd "gym management system/backend"
+./apache-maven-3.9.8/bin/mvn clean package -DskipTests=false 2>&1 | tee build-output.txt
+./apache-maven-3.9.8/bin/mvn spring-boot:run
+```
+
+**Frontend:**
+```powershell
+cd "gym management system\frontend"
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173**
+
+---
+
+### Running Acceptance Tests
+
+**PowerShell** (start backend first):
+```powershell
+cd "gym management system"
+.\scripts\acceptance-tests.ps1
+```
+
+**Bash** (start backend first):
+```bash
+cd "gym management system"
+chmod +x scripts/acceptance-tests.sh
+./scripts/acceptance-tests.sh
+```
+
+---
+
+### Vite Proxy Configuration
+
+`frontend/vite.config.js` already proxies all `/api` calls to the backend:
+```js
+server: {
+  proxy: {
+    '/api': { target: 'http://localhost:8080', changeOrigin: true, secure: false }
+  }
+}
+```
+The frontend never needs to know the backend port — all API calls use `/api/...`.
+
+---
+
+### Password Reset Flow (OTP)
+
+```
+1. POST /api/users/forgot-password  { "email": "..." }
+   → Generates 6-digit OTP, stores in DB, sends via Gmail SMTP
+   → Always returns 200 (prevents email enumeration)
+   → OTP expires after 5 minutes (single-use)
+
+2. POST /api/users/verify-otp  { "email": "...", "otp": 123456 }
+   → Validates OTP (5-minute expiry)
+   → Returns 400 if OTP is wrong or expired
+
+3. POST /api/users/reset-password  { "email": "...", "newPassword": "..." }
+   → Resets password with BCrypt hash, clears OTP session
+   → NOTE: no "token" field — this is OTP-based, not link-based
+```
+
+---
+
+### Payment Integration
+
+#### Cashfree (INR payments)
+
+| Method | Endpoint                    | Auth   | Description                              |
+|--------|-----------------------------|--------|------------------------------------------|
+| POST   | /cashfree/create-order      | MEMBER | Create Cashfree order, get session ID    |
+| POST   | /cashfree/verify-order      | MEMBER | Verify payment after checkout redirect   |
+| POST   | /cashfree/callback          | Public | Webhook called by Cashfree on completion |
+| GET    | /cashfree/status            | ADMIN  | Show Cashfree config + environment       |
+
+**Sandbox vs Production switch:**
+```properties
+# Sandbox (testing) — default
+cashfree.environment=SANDBOX
+cashfree.apiBaseUrl=https://sandbox.cashfree.com
+
+# Production (live) — change both values
+cashfree.environment=PRODUCTION
+cashfree.apiBaseUrl=https://api.cashfree.com
+```
+Set via env vars: `CASHFREE_ENV=PRODUCTION` and `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` from the production API keys page.
+
+**Webhook security:** Set `CASHFREE_WEBHOOK_SECRET` to the secret from your Cashfree dashboard. The backend verifies `x-webhook-signature` (HMAC-SHA256) on every webhook call. Without this, a malicious actor could fake a payment-success event.
+
+#### PayPal (USD payments)
+
+| Method | Endpoint                              | Auth   | Description                        |
+|--------|---------------------------------------|--------|------------------------------------|
+| POST   | /api/payments/paypal/create-order     | MEMBER | Create PayPal order                |
+| POST   | /api/payments/paypal/capture-order    | MEMBER | Capture after PayPal approval      |
+
+**Required env vars (both needed for server-side PayPal API calls):**
+```
+PAYPAL_SANDBOX_CLIENT_ID=...      # from developer.paypal.com → My Apps → Sandbox
+PAYPAL_SANDBOX_CLIENT_SECRET=...  # required for access token exchange
+```
+> PayPal's Orders API v2 requires both client ID and client secret to obtain an access token. Without the secret, all server-side PayPal calls return 401.
+
+---
+
+### DB Migration
+
+To convert all ID columns to BIGINT (run on staging first):
+```sql
+-- See backend-migrations/convert-ids-to-bigint.sql
+-- Always backup before running!
+```
+
+---
+
+### Key Endpoints
+
+| Method | Endpoint                        | Auth          | Description                    |
+|--------|---------------------------------|---------------|--------------------------------|
+| POST   | /api/auth/login                 | Public        | Login, get JWT                 |
+| POST   | /api/auth/register              | Public        | Register new user              |
+| POST   | /api/users/forgot-password      | Public        | Send OTP to email              |
+| POST   | /api/users/verify-otp           | Public        | Verify 6-digit OTP             |
+| POST   | /api/users/reset-password       | Public        | Reset password (OTP-based)     |
+| PUT    | /api/users/change-password      | JWT           | Change password                |
+| GET    | /api/users/profile              | JWT           | Get own profile                |
+| PUT    | /api/users/profile              | JWT           | Update own profile             |
+| GET    | /api/users/members              | ADMIN         | All members from DB            |
+| GET    | /api/users/trainers             | ADMIN         | All trainers from DB           |
+| POST   | /api/attendance/mark            | JWT           | Check-in / check-out toggle    |
+| GET    | /api/attendance/my              | JWT           | Own attendance history         |
+| GET    | /api/attendance/my/count        | JWT           | Own total check-in count       |
+| GET    | /api/attendance/today           | ADMIN/TRAINER | Today's check-ins              |
+| GET    | /api/plans/active               | Public        | Active membership plans        |
+| POST   | /cashfree/create-order          | MEMBER        | Create Cashfree payment order  |
+| POST   | /cashfree/verify-order          | MEMBER        | Verify Cashfree payment        |
+| POST   | /cashfree/callback              | Public        | Cashfree webhook (signed)      |
+| POST   | /api/payments/paypal/create-order  | MEMBER     | Create PayPal order            |
+| POST   | /api/payments/paypal/capture-order | MEMBER     | Capture PayPal payment         |
+| GET    | /actuator/health                | Public        | Health check                   |
+| GET    | /internal/smtp-status           | Dev only      | SMTP config + connection test  |
+| GET    | /internal/test-email            | Dev only      | Send test OTP email            |

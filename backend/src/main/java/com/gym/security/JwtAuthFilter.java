@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,22 +21,17 @@ import java.io.IOException;
 /**
  * JwtAuthFilter — runs once per request.
  *
- * Flow:
- *   1. Extract the JWT from the "Authorization: Bearer <token>" header
- *   2. Validate the token
- *   3. Load the user from the database
- *   4. Set the authentication in Spring Security's context
- *
- * After this filter, Spring Security knows who the user is and what roles they have.
+ * If a valid Bearer token is present → sets authentication in SecurityContext.
+ * If no token or invalid token → continues the filter chain unauthenticated
+ * (Spring Security will then enforce rules from SecurityConfig).
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    @Autowired
-    private UserDetailsService userDetailsService;
+    @Autowired private JwtUtils jwtUtils;
+    @Autowired private UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -43,43 +40,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         try {
-            // Step 1: Get the JWT from the request header
             String jwt = parseJwt(request);
 
-            // Step 2: Validate the token
             if (jwt != null && jwtUtils.validateToken(jwt)) {
-
-                // Step 3: Get the email from the token
                 String email = jwtUtils.getEmailFromToken(jwt);
-
-                // Step 4: Load user details from the database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                // Step 5: Create an authentication object and set it in the security context
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()  // roles
-                        );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                                userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // This tells Spring Security the user is authenticated for this request
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("JWT authenticated: {} → {}", email, request.getRequestURI());
             }
+
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            // Log with proper SLF4J syntax — third arg is the Throwable
+            log.error("JWT auth failed for [{}]: {}", request.getRequestURI(), e.getMessage(), e);
         }
 
-        // Continue to the next filter in the chain
         filterChain.doFilter(request, response);
     }
 
-    /** Extract the token from "Authorization: Bearer <token>" */
     private String parseJwt(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7); // remove "Bearer " prefix
+        String header = request.getHeader("Authorization");
+        if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
+            return header.substring(7);
         }
         return null;
     }

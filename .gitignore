@@ -1,3 +1,37 @@
-﻿node_modules
-target
+﻿# ── Build outputs ─────────────────────────────────────────────
+target/
+*.jar
+*.war
+*.class
+
+# ── Node / Frontend ───────────────────────────────────────────
+node_modules/
+dist/
+.cache/
+
+# ── Environment & Secrets (NEVER commit these) ────────────────
 .env
+.env.local
+.env.*.local
+
+# Spring Boot properties with real credentials
+# application-dev.properties, application-local.properties, etc.
+**/application-dev.properties
+**/application-local.properties
+**/application-prod.properties
+**/application-local.properties.template
+
+# ── IDE / OS ──────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+run-output.txt
+build-output.txt
+
+# ── Maven wrapper ─────────────────────────────────────────────
+.mvn/wrapper/maven-wrapper.jar

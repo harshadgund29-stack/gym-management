@@ -1,6 +1,7 @@
 package com.gym.dto;
 
 import com.gym.entity.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class AuthResponse {
 
@@ -10,7 +11,13 @@ public class AuthResponse {
     private String firstName;
     private String lastName;
     private String email;
-    private Role role;
+
+    // Serialized as "ROLE_ADMIN" / "ROLE_TRAINER" / "ROLE_MEMBER"
+    // so the React frontend can do: user.role === 'ROLE_ADMIN'
+    private String role;
+
+    @JsonIgnore
+    private Role roleEnum;
 
     public AuthResponse() {}
 
@@ -32,6 +39,12 @@ public class AuthResponse {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
+    // Returns "ROLE_ADMIN", "ROLE_TRAINER", or "ROLE_MEMBER"
+    public String getRole() { return role; }
+
+    // Accept raw Role enum and prefix with ROLE_
+    public void setRole(Role role) {
+        this.roleEnum = role;
+        this.role = role != null ? "ROLE_" + role.name() : null;
+    }
 }

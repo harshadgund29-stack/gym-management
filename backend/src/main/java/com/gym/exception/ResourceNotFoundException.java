@@ -4,8 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 /**
- * Thrown when a requested resource (user, plan, etc.) is not found in the database.
- * @ResponseStatus maps this to HTTP 404 automatically.
+ * Thrown when a requested resource is not found.
  */
 @ResponseStatus(HttpStatus.NOT_FOUND)
 public class ResourceNotFoundException extends RuntimeException {
@@ -18,3 +17,4 @@ public class ResourceNotFoundException extends RuntimeException {
         super(String.format("%s not found with %s: '%s'", resourceName, fieldName, fieldValue));
     }
 }
+

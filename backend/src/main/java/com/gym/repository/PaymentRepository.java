@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
@@ -17,6 +18,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'COMPLETED'")
     BigDecimal getTotalRevenue();
+
+    Optional<Payment> findByTransactionId(String transactionId);
 
     @Query("SELECT COUNT(p) FROM Payment p WHERE MONTH(p.paymentDate) = MONTH(CURRENT_DATE) AND YEAR(p.paymentDate) = YEAR(CURRENT_DATE)")
     long countPaymentsThisMonth();
