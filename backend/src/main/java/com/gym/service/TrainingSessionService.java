@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional(readOnly = true)
 public class TrainingSessionService {
 
     @Autowired
@@ -39,6 +42,7 @@ public class TrainingSessionService {
         return sessionRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional
     public TrainingSessionDTO createSession(TrainingSessionDTO dto) {
         User trainer = userRepository.findById(dto.getTrainerId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", dto.getTrainerId()));
@@ -57,6 +61,7 @@ public class TrainingSessionService {
         return toDTO(sessionRepository.save(session));
     }
 
+    @Transactional
     public TrainingSessionDTO updateSession(Long id, TrainingSessionDTO dto) {
         TrainingSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TrainingSession", "id", id));
@@ -69,6 +74,7 @@ public class TrainingSessionService {
         return toDTO(sessionRepository.save(session));
     }
 
+    @Transactional
     public void deleteSession(Long id) {
         if (!sessionRepository.existsById(id)) {
             throw new ResourceNotFoundException("TrainingSession", "id", id);

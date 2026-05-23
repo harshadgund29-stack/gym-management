@@ -1,5 +1,6 @@
 package com.gym.service;
 
+import com.gym.dto.WorkoutPlanAssignRequest;
 import com.gym.dto.WorkoutPlanDTO;
 import com.gym.entity.User;
 import com.gym.entity.WorkoutPlan;
@@ -12,7 +13,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional(readOnly = true)
 public class WorkoutPlanService {
 
     @Autowired
@@ -20,6 +24,11 @@ public class WorkoutPlanService {
 
     @Autowired
     private UserRepository userRepository;
+
+    public List<WorkoutPlanDTO> getAllPlans() {
+        return workoutPlanRepository.findAll()
+                .stream().map(this::toDTO).collect(Collectors.toList());
+    }
 
     public List<WorkoutPlanDTO> getPlansByTrainer(Long trainerId) {
         User trainer = userRepository.findById(trainerId)
@@ -35,11 +44,31 @@ public class WorkoutPlanService {
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /** Alias used by GET /api/workout/member/{memberId} */
+    public List<WorkoutPlanDTO> getPlansForMember(Long memberId) {
+        return getPlansByMember(memberId);
+    }
+
+    @Transactional
+    public WorkoutPlanDTO assignPlanToMember(WorkoutPlanAssignRequest request) {
+        WorkoutPlanDTO dto = new WorkoutPlanDTO();
+        dto.setTrainerId(request.getTrainerId());
+        dto.setMemberId(request.getMemberId());
+        dto.setTitle(request.getPlanTitle());
+        dto.setGoal(request.getGoal());
+        dto.setWeekDuration(request.getTotalWeeks() != null && request.getTotalWeeks() > 0
+                ? request.getTotalWeeks() : null);
+        dto.setDescription(request.getDescription());
+        dto.setExercises(request.getExercises());
+        return createPlan(dto);
+    }
+
     public WorkoutPlanDTO getPlanById(Long id) {
         return toDTO(workoutPlanRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WorkoutPlan", "id", id)));
     }
 
+    @Transactional
     public WorkoutPlanDTO createPlan(WorkoutPlanDTO dto) {
         User trainer = userRepository.findById(dto.getTrainerId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", dto.getTrainerId()));
@@ -58,6 +87,7 @@ public class WorkoutPlanService {
         return toDTO(workoutPlanRepository.save(plan));
     }
 
+    @Transactional
     public WorkoutPlanDTO updatePlan(Long id, WorkoutPlanDTO dto) {
         WorkoutPlan plan = workoutPlanRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WorkoutPlan", "id", id));
@@ -69,6 +99,7 @@ public class WorkoutPlanService {
         return toDTO(workoutPlanRepository.save(plan));
     }
 
+    @Transactional
     public void deletePlan(Long id) {
         if (!workoutPlanRepository.existsById(id)) {
             throw new ResourceNotFoundException("WorkoutPlan", "id", id);

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS membership_plans (
     name             VARCHAR(100)   NOT NULL UNIQUE,
     description      TEXT,
     price            DECIMAL(10,2)  NOT NULL,
+    packing_price   DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
     duration_months  INT            NOT NULL,
     features         TEXT,
     active           BOOLEAN        NOT NULL DEFAULT TRUE
@@ -113,3 +114,33 @@ CREATE TABLE IF NOT EXISTS workout_plans (
     FOREIGN KEY (trainer_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id)  REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ============================================================
+-- Table: attendance
+-- Records daily check-ins and check-outs for users
+-- ============================================================
+CREATE TABLE IF NOT EXISTS attendance (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id       BIGINT          NOT NULL,
+    check_in      DATETIME        NOT NULL,
+    check_out     DATETIME,
+    status        VARCHAR(20)    NOT NULL DEFAULT 'CHECKED_IN',
+    marked_by_id  BIGINT,
+    FOREIGN KEY (user_id)      REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (marked_by_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ============================================================
+-- Table: email_logs
+-- Stores records of all outbound emails (OTP and transactional receipts)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_logs (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recipient     VARCHAR(255)    NOT NULL,
+    subject       VARCHAR(255)    NOT NULL,
+    body          LONGTEXT,
+    status        VARCHAR(20)     NOT NULL, -- SUCCESS or FAILED
+    error_message TEXT,
+    sent_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+

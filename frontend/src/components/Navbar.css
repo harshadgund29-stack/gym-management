@@ -1,94 +1,188 @@
+/* ═══════════════════════════════════════════════════════════════
+   FitPro Premium Navbar
+   ═══════════════════════════════════════════════════════════════ */
+
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  padding: 0 2rem;
-  height: 64px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  background: rgba(7, 21, 16, 0.97);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+  padding: 0 2.5rem;
+  height: 70px;
+  box-shadow: 0 4px 24px rgba(7,21,16,0.2), 0 1px 0 rgba(16,185,129,0.1);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 200;
+  transition: var(--transition);
 }
 
+/* Animated top accent line */
+.navbar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--lime), var(--primary), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Brand ── */
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   text-decoration: none;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
 }
+.navbar-brand:hover { transform: scale(1.04); }
 
-.brand-icon { font-size: 1.5rem; }
+.brand-icon {
+  font-size: 1.7rem;
+  filter: drop-shadow(0 2px 12px rgba(16,185,129,0.5));
+  animation: float 5s ease-in-out infinite;
+}
 
 .brand-name {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #e94560;
-  letter-spacing: 1px;
+  font-size: 1.55rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffffff 20%, var(--primary) 80%, var(--lime) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientText 5s ease infinite;
+  letter-spacing: -0.5px;
 }
 
+/* ── Nav Links ── */
 .navbar-links {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  background: rgba(255,255,255,0.04);
+  padding: 0.3rem;
+  border-radius: 40px;
+  border: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .nav-link {
-  color: #a0aec0;
+  color: rgba(160,200,180,0.85);
   text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s;
+  padding: 0.45rem 1.1rem;
+  border-radius: 30px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.nav-link:hover,
+.nav-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+  transform: scale(0); opacity: 0;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  border-radius: inherit;
+}
+.nav-link:active::after { transform: scale(2); opacity: 1; transition: 0s; }
+
+.nav-link:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.07);
+}
+
 .nav-link.active {
   color: #fff;
-  background: rgba(233, 69, 96, 0.2);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  box-shadow: 0 4px 14px rgba(16,185,129,0.3);
 }
 
+/* ── User Area ── */
 .navbar-user {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
+  flex-shrink: 0;
 }
+
+.user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 0.8rem; font-weight: 800;
+  box-shadow: 0 0 0 2px rgba(16,185,129,0.3);
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+.user-avatar:hover { box-shadow: 0 0 0 3px var(--primary); transform: scale(1.08); }
 
 .user-name {
   color: #e2e8f0;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: -0.1px;
 }
 
 .user-role {
-  background: #e94560;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
+  background: rgba(16,185,129,0.14);
+  color: var(--primary);
+  border: 1px solid rgba(16,185,129,0.28);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.22rem 0.7rem;
+  border-radius: 30px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .logout-btn {
   background: transparent;
-  border: 1px solid #e94560;
-  color: #e94560;
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
+  border: 1.5px solid rgba(16,185,129,0.35);
+  color: var(--primary);
+  padding: 0.42rem 1.1rem;
+  border-radius: 30px;
   cursor: pointer;
   font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-weight: 700;
+  transition: var(--transition);
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
 }
-
+.logout-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%);
+  transform: scale(0); opacity: 0;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  border-radius: inherit;
+}
+.logout-btn:active::after { transform: scale(2.5); opacity: 1; transition: 0s; }
 .logout-btn:hover {
-  background: #e94560;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(16,185,129,0.4);
+  transform: translateY(-1px);
 }
 
+/* ── Responsive ── */
+@media (max-width: 1100px) { .navbar { padding: 0 1.5rem; } }
+@media (max-width: 900px) {
+  .user-name { display: none; }
+  .nav-link { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+}
 @media (max-width: 768px) {
-  .navbar { flex-wrap: wrap; height: auto; padding: 0.75rem 1rem; gap: 0.5rem; }
-  .navbar-links { order: 3; width: 100%; flex-wrap: wrap; }
+  .navbar { flex-wrap: wrap; height: auto; padding: 0.75rem 1rem; gap: 0.6rem; }
+  .navbar-links { order: 3; width: 100%; border-radius: var(--radius-md); }
+  .navbar-user { gap: 0.5rem; }
 }

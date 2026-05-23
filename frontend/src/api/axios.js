@@ -6,7 +6,9 @@ import axios from 'axios';
  * In development, CRA's package.json proxy forwards /api/* to http://localhost:8080.
  * In other environments, use REACT_APP_API_URL to point directly at the backend.
  */
-const baseURL = process.env.REACT_APP_API_URL || '/api';
+// In dev, Vite proxy forwards /api/* to the backend.
+// baseURL must NOT include an extra /api prefix when the request path already starts with /api.
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 const api = axios.create({
   baseURL,
@@ -21,7 +23,8 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('gymToken');
+    // Support both token keys used across the codebase
+    const token = localStorage.getItem('gymToken') || localStorage.getItem('fitpro_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

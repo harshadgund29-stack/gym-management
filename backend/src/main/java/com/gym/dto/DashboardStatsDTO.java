@@ -12,6 +12,7 @@ public class DashboardStatsDTO {
     private BigDecimal totalRevenue;
     private long paymentsThisMonth;
     private long totalSessions;
+    private long todayAttendanceCount;
     // Last 6 months revenue for the bar chart: [{month:"Dec 2025", revenue:12000}, ...]
     private List<Map<String, Object>> monthlyRevenue;
 
@@ -38,6 +39,10 @@ public class DashboardStatsDTO {
     public long getTotalSessions() { return totalSessions; }
     public void setTotalSessions(long v) { this.totalSessions = v; }
 
+    public long getTodayAttendanceCount() { return todayAttendanceCount; }
+    public void setTodayAttendanceCount(long v) { this.todayAttendanceCount = v; }
+
     public List<Map<String, Object>> getMonthlyRevenue() { return monthlyRevenue; }
     public void setMonthlyRevenue(List<Map<String, Object>> v) { this.monthlyRevenue = v; }
 }
+

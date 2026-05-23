@@ -23,8 +23,16 @@ public class MembershipPlanDTO {
     @Min(value = 1, message = "Duration must be at least 1 month")
     private Integer durationMonths;
 
+    @NotNull(message = "Packing price is required")
+    @DecimalMin(value = "0.0", inclusive = true, message = "Packing price must be >= 0")
+    private BigDecimal packingPrice = BigDecimal.valueOf(0.00);
+
+
+    private BigDecimal totalAmount;
+
     private String features;
     private Boolean active;
+
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -41,8 +49,15 @@ public class MembershipPlanDTO {
     public Integer getDurationMonths() { return durationMonths; }
     public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
 
+    public BigDecimal getPackingPrice() { return packingPrice; }
+    public void setPackingPrice(BigDecimal packingPrice) { this.packingPrice = packingPrice; }
+
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
     public String getFeatures() { return features; }
     public void setFeatures(String features) { this.features = features; }
+
 
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }

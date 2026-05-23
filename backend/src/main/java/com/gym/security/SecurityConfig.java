@@ -19,21 +19,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import java.util.Arrays;
 
-/**
- * SecurityConfig — the main Spring Security configuration.
- *
- * Key decisions:
- *  - Stateless sessions (JWT, no server-side session)
- *  - CORS enabled for React frontend on localhost:3000
- *  - Public endpoints: /api/auth/**
- *  - All other endpoints require authentication
- *  - Fine-grained role checks are done with @PreAuthorize in controllers
- */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity   // enables @PreAuthorize on controller methods
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -42,13 +32,11 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
 
-    /** BCrypt password encoder — industry standard for hashing passwords */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /** Wires our UserDetailsService and password encoder together */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -57,61 +45,83 @@ public class SecurityConfig {
         return provider;
     }
 
-    /** Exposes the AuthenticationManager bean so AuthService can use it */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /** Main security filter chain */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF — not needed for stateless JWT APIs
             .csrf(csrf -> csrf.disable())
-
-            // Enable CORS with our configuration below
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // Stateless — no HTTP session, every request must carry a JWT
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-            // Define which endpoints are public vs protected
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public: login and register
-                .requestMatchers("/api/auth/**").permitAll()
-                // Everything else requires a valid JWT
+                // Always allow OPTIONS preflight requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // Public auth endpoints
+                .requestMatchers(
+                    "/api/auth/register",
+                    "/api/auth/login",
+                    "/api/auth/forgot-password",
+                    "/api/auth/verify-otp",
+                    "/api/auth/reset-password"
+                ).permitAll()
+
+                // Forgot-password flow under /api/users
+                .requestMatchers(
+                    "/api/users/forgot-password",
+                    "/api/users/verify-otp",
+                    "/api/users/reset-password"
+                ).permitAll()
+
+                // Cashfree webhook (public)
+                .requestMatchers("/api/cashfree/callback").permitAll()
+
+                // Cashfree order + verify (JWT required)
+                .requestMatchers("/api/cashfree/order").authenticated()
+                .requestMatchers("/api/cashfree/verify/**").authenticated()
+
+                // Everything else requires JWT
                 .anyRequest().authenticated()
             )
-
-            // Register our authentication provider
             .authenticationProvider(authenticationProvider())
-
-            // Add our JWT filter BEFORE Spring's default username/password filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * CORS configuration — allows the React frontend (localhost:3000) to call our API.
-     * In production, replace localhost:3000 with your actual frontend domain.
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        
-        // Read from ALLOWED_ORIGIN env var, default to localhost:3000
-        String allowedOrigin = System.getenv("ALLOWED_ORIGIN");
-        if (allowedOrigin == null || allowedOrigin.isEmpty()) {
-            allowedOrigin = "http://localhost:3000";
-        }
-        
-        config.setAllowedOrigins(List.of(allowedOrigin));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+
+        // Allow localhost on any port (5173, 5174, etc.)
+        config.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:[*]",
+            "http://127.0.0.1:[*]"
+        ));
+
+        // Allow common HTTP methods including OPTIONS
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
+        // Allow headers needed for JWT + AJAX
+        config.setAllowedHeaders(Arrays.asList(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With"
+        ));
+
+        // Expose Authorization header so frontend can read JWT
+        config.setExposedHeaders(Arrays.asList("Authorization"));
+
+        // Allow credentials (cookies + Authorization header)
         config.setAllowCredentials(true);
+
+        // Cache preflight response for 1 hour
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

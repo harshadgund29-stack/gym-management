@@ -42,6 +42,11 @@ public class User {
 
     private LocalDateTime updatedAt;
 
+    // ---- NEW FIELDS FOR OTP ----
+    private Integer otp;
+
+    private LocalDateTime otpGeneratedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -83,4 +88,10 @@ public class User {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Integer getOtp() { return otp; }
+    public void setOtp(Integer otp) { this.otp = otp; }
+
+    public LocalDateTime getOtpGeneratedAt() { return otpGeneratedAt; }
+    public void setOtpGeneratedAt(LocalDateTime otpGeneratedAt) { this.otpGeneratedAt = otpGeneratedAt; }
 }

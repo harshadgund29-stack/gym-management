@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
+
 
 @Service
 public class MembershipPlanService {
@@ -34,7 +36,9 @@ public class MembershipPlanService {
         plan.setName(dto.getName());
         plan.setDescription(dto.getDescription());
         plan.setPrice(dto.getPrice());
+        plan.setPackingPrice(dto.getPackingPrice() != null ? dto.getPackingPrice() : BigDecimal.valueOf(0.00));
         plan.setDurationMonths(dto.getDurationMonths());
+
         plan.setFeatures(dto.getFeatures());
         plan.setActive(dto.getActive() != null ? dto.getActive() : true);
         return toDTO(planRepository.save(plan));
@@ -46,7 +50,9 @@ public class MembershipPlanService {
         plan.setName(dto.getName());
         plan.setDescription(dto.getDescription());
         plan.setPrice(dto.getPrice());
+        plan.setPackingPrice(dto.getPackingPrice() != null ? dto.getPackingPrice() : BigDecimal.valueOf(0.00));
         plan.setDurationMonths(dto.getDurationMonths());
+
         plan.setFeatures(dto.getFeatures());
         if (dto.getActive() != null) plan.setActive(dto.getActive());
         return toDTO(planRepository.save(plan));
@@ -65,8 +71,11 @@ public class MembershipPlanService {
         dto.setName(plan.getName());
         dto.setDescription(plan.getDescription());
         dto.setPrice(plan.getPrice());
+        dto.setPackingPrice(plan.getPackingPrice());
+        dto.setTotalAmount(plan.getPrice().add(plan.getPackingPrice()));
         dto.setDurationMonths(plan.getDurationMonths());
         dto.setFeatures(plan.getFeatures());
+
         dto.setActive(plan.getActive());
         return dto;
     }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +27,55 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
+
+    /** Forgot password: generate and save OTP */
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        // Generate random 6-digit OTP
+        int otp = (int)(Math.random() * 900000) + 100000;
+
+        // Save OTP and timestamp in DB
+        user.setOtp(otp);
+        user.setOtpGeneratedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        // Send OTP via email
+        emailService.sendOtp(user.getEmail(), otp);
+    }
+
+    /** Verify OTP */
+    public boolean verifyOtp(String email, int otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        if (user.getOtp() == null) {
+            return false;
+        }
+
+        // Check expiry (5 minutes)
+        if (user.getOtpGeneratedAt() != null &&
+            user.getOtpGeneratedAt().plusMinutes(5).isBefore(LocalDateTime.now())) {
+            return false; // expired
+        }
+
+        return user.getOtp().equals(otp);
+    }
+
+    /** Reset password after OTP verification */
+    public void resetPassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setOtp(null); // clear OTP after use
+        user.setOtpGeneratedAt(null);
+        userRepository.save(user);
+    }
 
     /** Get all users (admin only) */
     public List<UserDTO> getAllUsers() {

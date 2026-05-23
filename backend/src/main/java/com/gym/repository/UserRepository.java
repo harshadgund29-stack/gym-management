@@ -3,6 +3,8 @@ package com.gym.repository;
 import com.gym.entity.Role;
 import com.gym.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,4 +25,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Admin: get all users with a specific role
     List<User> findByRole(Role role);
+
+    // Efficient count by role — used by dashboard
+    long countByRole(Role role);
 }

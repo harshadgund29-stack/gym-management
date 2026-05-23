@@ -16,7 +16,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional(readOnly = true)
 public class MembershipService {
 
     @Autowired
@@ -44,6 +47,7 @@ public class MembershipService {
     }
 
     /** Admin creates a membership for a member */
+    @Transactional
     public MembershipDTO createMembership(CreateMembershipRequest request) {
         User member = userRepository.findById(request.getMemberId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getMemberId()));
@@ -62,6 +66,7 @@ public class MembershipService {
     }
 
     /** Admin can update membership status */
+    @Transactional
     public MembershipDTO updateStatus(Long id, Membership.MembershipStatus status) {
         Membership membership = membershipRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Membership", "id", id));

@@ -22,6 +22,13 @@ public class WorkoutPlanController {
     @Autowired
     private WorkoutPlanService workoutPlanService;
 
+    /** GET /api/workout-plans — Admin only: list all plans */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<WorkoutPlanDTO>> getAllPlans() {
+        return ResponseEntity.ok(workoutPlanService.getAllPlans());
+    }
+
     /** GET /api/workout-plans/trainer/{trainerId} — Trainer or Admin */
     @GetMapping("/trainer/{trainerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
@@ -29,9 +36,9 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(workoutPlanService.getPlansByTrainer(trainerId));
     }
 
-    /** GET /api/workout-plans/member/{memberId} — Member or Admin */
+    /** GET /api/workout-plans/member/{memberId} — Member, Trainer, or Admin */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER', 'MEMBER')")
     public ResponseEntity<List<WorkoutPlanDTO>> getPlansByMember(@PathVariable Long memberId) {
         return ResponseEntity.ok(workoutPlanService.getPlansByMember(memberId));
     }

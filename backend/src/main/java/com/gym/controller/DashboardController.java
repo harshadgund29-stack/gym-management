@@ -1,5 +1,6 @@
 package com.gym.controller;
 
+import com.gym.dto.AdminSummaryDTO;
 import com.gym.dto.DashboardStatsDTO;
 import com.gym.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,5 +26,17 @@ public class DashboardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DashboardStatsDTO> getStats() {
         return ResponseEntity.ok(dashboardService.getStats());
+    }
+
+    /**
+     * GET /api/dashboard/summary — Admin only.
+     *
+     * Returns totalMembers, totalTrainers, trainer presence (today's attendance),
+     * and all member → plan purchase records.
+     */
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AdminSummaryDTO> getSummary() {
+        return ResponseEntity.ok(dashboardService.getSummary());
     }
 }

@@ -20,8 +20,12 @@ public class MembershipPlan {
     @Column(nullable = false)
     private BigDecimal price;
 
+    @Column(name = "packingPrice", nullable = false, precision = 10, scale = 2)
+    private BigDecimal packingPrice = BigDecimal.valueOf(0.00);
+
     @Column(nullable = false)
     private Integer durationMonths;
+
 
     private String features;
 
@@ -41,8 +45,12 @@ public class MembershipPlan {
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
 
+    public BigDecimal getPackingPrice() { return packingPrice; }
+    public void setPackingPrice(BigDecimal packingPrice) { this.packingPrice = packingPrice; }
+
     public Integer getDurationMonths() { return durationMonths; }
     public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
+
 
     public String getFeatures() { return features; }
     public void setFeatures(String features) { this.features = features; }

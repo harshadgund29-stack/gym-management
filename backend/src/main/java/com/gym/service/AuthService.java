@@ -6,6 +6,7 @@ import com.gym.dto.RegisterRequest;
 import com.gym.entity.Role;
 import com.gym.entity.User;
 import com.gym.exception.BadRequestException;
+import com.gym.exception.ResourceNotFoundException;
 import com.gym.repository.UserRepository;
 import com.gym.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,12 @@ public class AuthService {
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Autowired
+    private OtpService otpService;
+
+    @Autowired
+    private EmailService emailService;
 
     /**
      * Register a new user.
@@ -126,6 +133,46 @@ public class AuthService {
         return buildAuthResponse(token, user);
     }
 
+    /**
+     * Initiates the forgot-password flow: generates a 6-digit OTP, saves it, and sends it via SMTP.
+     */
+    public void forgotPassword(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", normalizedEmail));
+        
+        String otp = otpService.generateOtp(normalizedEmail);
+        emailService.sendOtpEmail(normalizedEmail, otp);
+    }
+
+    /**
+     * Verifies if the supplied OTP matches the cache and is not expired.
+     */
+    public boolean verifyOtp(String email, String otp) {
+        String normalizedEmail = email.trim().toLowerCase();
+        if (!userRepository.existsByEmail(normalizedEmail)) {
+            throw new ResourceNotFoundException("User", "email", normalizedEmail);
+        }
+        return otpService.verifyOtp(normalizedEmail, otp);
+    }
+
+    /**
+     * Verifies the OTP, hashes the new password with BCrypt, updates the user record, and clears OTP cache.
+     */
+    public void resetPassword(com.gym.dto.ResetPasswordRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", normalizedEmail));
+        
+        if (!otpService.verifyOtp(normalizedEmail, request.getOtp())) {
+            throw new BadRequestException("Invalid or expired OTP code.");
+        }
+        
+        user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        userRepository.save(user);
+        otpService.clearOtp(normalizedEmail);
+    }
+
     /** Helper to build the AuthResponse DTO */
     private AuthResponse buildAuthResponse(String token, User user) {
         AuthResponse response = new AuthResponse();
@@ -139,3 +186,4 @@ public class AuthService {
         return response;
     }
 }
+

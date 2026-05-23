@@ -1,0 +1,14 @@
+workspace:
+  id: 1fe5d58c-edb8-4868-82dc-8d3661ff9206
+localResources:
+  collections:
+    - ../postman/collections/Gym Management Backend
+    - ../postman/collections/New Collection-1
+  environments:
+    - ../postman/environments/New Environment.environment.yaml
+cloudResources:
+  collections:
+    ../postman/collections/Gym Management Backend: 55062113-42090ea0-16be-4c9a-9d0d-8e03b33da881
+    ../postman/collections/New Collection-1: 55062113-b3ff21a2-794d-4b47-9c81-797d2f038f27
+  environments:
+    ../postman/environments/New Environment.environment.yaml: 55062113-db565727-7e58-4033-b826-0e678c88ae89

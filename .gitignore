@@ -1,3 +1,7 @@
 ﻿node_modules
 target
 .env
+frontend/dist
+backend/target
+*.class
+.DS_Store
